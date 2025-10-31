@@ -1,0 +1,93 @@
+/* Glassy effect for review cards */
+.review-card {
+  background: rgba(76, 29, 149, 0.2) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(167, 139, 250, 0.2) !important;
+  border-radius: 12px !important;
+  transition: all 0.3s ease !important;
+}
+
+.review-card:hover {
+  transform: translateY(-5px) !important;
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.4), 0 10px 10px -5px rgba(139, 92, 246, 0.1) !important;
+  border-color: rgba(167, 139, 250, 0.4) !important;
+}
+
+/* Review form styling */
+.review-form {
+  background: rgba(30, 27, 75, 0.3) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(167, 139, 250, 0.2) !important;
+  border-radius: 12px !important;
+}
+
+/* Custom scrollbar for reviews container */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #8b5cf6;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #7c3aed;
+}
+
+/* Star rating styling */
+.star-rating button {
+  color: #fbbf24 !important; /* Yellow-400 */
+  transition: all 0.2s ease !important;
+}
+
+.star-rating button:hover {
+  color: #f59e0b !important; /* Yellow-500 */
+  transform: scale(1.2) !important;
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.7)) !important;
+}
+
+/* Selected star styling */
+.star-rating button[aria-pressed="true"] {
+  color: #f59e0b !important; /* Yellow-500 */
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.9)) !important;
+}
+
+/* Submit button styling */
+.submit-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  transition: all 0.3s ease !important;
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 15px -5px rgba(139, 92, 246, 0.6) !important;
+}
+
+/* Text colors */
+.text-primary {
+  color: #e9d5ff !important;
+}
+
+.text-secondary {
+  color: #c4b5fd !important;
+}
+
+/* Input fields */
+.input-field {
+  background: rgba(17, 24, 39, 0.5) !important;
+  border: 1px solid rgba(167, 139, 250, 0.3) !important;
+  color: white !important;
+}
+
+.input-field:focus {
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3) !important;
+}

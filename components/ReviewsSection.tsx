@@ -1,214 +1,307 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import { Star, Send, User, AlertCircle, CheckCircle } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import LoadingAnimation from './LoadingAnimation'
+import { motion } from 'framer-motion';
+import { Star, User, Send, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { formatDate, formatRelativeTime } from '@/lib/utils/date';
+import './reviews.css';
 
 interface Review {
-  id: string
-  name: string
-  rating: number
-  comment: string
-  company?: string
-  date: string
+  id: string;
+  name: string;
+  rating: number;
+  comment: string;
+  company?: string;
+  date: string;
+  approved?: boolean;
 }
 
 export default function ReviewsSection() {
-  const [reviews, setReviews] = useState<Review[]>([])
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [visibleReviews, setVisibleReviews] = useState(3);
   const [formData, setFormData] = useState({
     name: '',
     rating: 5,
     comment: '',
     company: ''
-  })
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [responseMessage, setResponseMessage] = useState('')
-  const [showLoading, setShowLoading] = useState(false)
+  });
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [responseMessage, setResponseMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Fetch reviews on component mount
   useEffect(() => {
-    fetchReviews()
-  }, [])
+    console.log('Component mounted, fetching reviews...');
+    fetchReviews();
+  }, []);
 
-  const fetchReviews = async () => {
+  const fetchReviews = async (showMore = false) => {
     try {
-      const response = await fetch('/api/reviews')
-      const data = await response.json()
-      setReviews(data.reviews || [])
-    } catch (error) {
-      console.error('Failed to fetch reviews:', error)
-    }
-  }
+      console.log('fetchReviews called, showMore:', showMore);
+      if (showMore) {
+        setIsLoadingMore(true);
+      } else {
+        setStatus('loading');
+      }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
-  }
+      console.log('Fetching from /api/reviews...');
+      const response = await fetch('/api/reviews');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch reviews:', response.status, errorText);
+        throw new Error(`Failed to fetch reviews: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Received reviews data:', data);
+      console.log('Number of reviews received:', data.reviews?.length || 0);
+      setReviews(data.reviews || []);
+
+      if (showMore) {
+        setVisibleReviews(prev => Math.min(prev + 3, data.reviews?.length || 0));
+      }
+    } catch (error) {
+      console.error('Failed to fetch reviews:', error);
+      setStatus('error');
+      setResponseMessage('Failed to load reviews. Please try again later.');
+    } finally {
+      if (showMore) {
+        setIsLoadingMore(false);
+      } else {
+        setStatus('idle');
+      }
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'rating' ? Number(value) : value
+    }));
+  };
+
+  const handleRatingChange = (rating: number) => {
+    setFormData(prev => ({
+      ...prev,
+      rating
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setStatus('loading')
-    setShowLoading(true)
-    setResponseMessage('')
-
-    try {
-      // Show loading animation for at least 1 second
-      const [response] = await Promise.all([
-        fetch('/api/reviews', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
-            name: formData.name.trim(),
-            rating: Number(formData.rating),
-            comment: formData.comment.trim(),
-            company: formData.company.trim()
-          }),
-        }),
-        new Promise(resolve => setTimeout(resolve, 1000))
-      ])
-
-      const data = await response.json()
-      setShowLoading(false)
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit review')
-      }
-
-      if (data.success) {
-        setStatus('success')
-        setResponseMessage(data.message || 'Thank you for your review!')
-        setFormData({ name: '', rating: 5, comment: '', company: '' })
-        // Refresh reviews after a short delay
-        setTimeout(() => {
-          fetchReviews()
-        }, 500)
-      } else {
-        throw new Error(data.error || 'Failed to submit review')
-      }
-    } catch (error) {
-      console.error('Review submission error:', error)
-      setShowLoading(false)
-      setStatus('error')
-      setResponseMessage(error instanceof Error ? error.message : 'Failed to submit review. Please try again.')
-      
-      // Auto-clear the error message after 5 seconds
-      const timer = setTimeout(() => {
-        setStatus('idle')
-        setResponseMessage('')
-      }, 5000)
-      
-      return () => clearTimeout(timer)
+    e.preventDefault();
+    
+    if (!formData.name.trim() || !formData.comment.trim()) {
+      setStatus('error');
+      setResponseMessage('Please fill in all required fields');
+      return;
     }
-  }
+    
+    setIsSubmitting(true);
+    setStatus('loading');
+    
+    try {
+      const response = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          rating: Number(formData.rating),
+          comment: formData.comment.trim(),
+          company: formData.company.trim()
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to submit review');
+      }
+      
+      // Refresh the reviews list
+      await fetchReviews();
+      
+      // Reset form
+      setFormData({
+        name: '',
+        rating: 5,
+        comment: '',
+        company: ''
+      });
+      
+      setStatus('success');
+      setResponseMessage('Thank you for your review! It has been submitted for approval.');
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      setStatus('error');
+      setResponseMessage(error instanceof Error ? error.message : 'Failed to submit review');
+    } finally {
+      setIsSubmitting(false);
+      
+      // Clear success/error message after 5 seconds
+      setTimeout(() => {
+        setStatus('idle');
+        setResponseMessage('');
+      }, 5000);
+    }
+  };
 
-  const renderStars = (rating: number) => {
+  // Filter approved reviews
+  const approvedReviews = reviews.filter(review => review.approved !== false);
+  const visibleReviewsList = approvedReviews.slice(0, visibleReviews);
+  const hasMoreReviews = approvedReviews.length > visibleReviews;
+
+  if (status === 'loading' && reviews.length === 0) {
     return (
-      <div className="flex gap-1" aria-label={`${rating} out of 5 stars`}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            size={16}
-            className={`${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'} transition-colors`}
-            aria-hidden="true"
-          />
-        ))}
+      <div className="py-16 bg-black min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
+          <p className="mt-4 text-gray-400">Loading reviews...</p>
+        </div>
       </div>
-    )
+    );
   }
 
   return (
-    <>
-      {showLoading && <LoadingAnimation />}
-      <section id="reviews" className="py-20 px-6 bg-black/30">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Client Reviews</h2>
-            <p className="text-white/60 text-lg">What our clients say about us</p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
-            {/* Reviews Display */}
-            <div className="space-y-6">
-              <h3 className="text-2xl font-bold mb-6">Recent Reviews</h3>
-              {reviews.length === 0 ? (
-                <div className="glass rounded-3xl p-8 text-center text-white/60">
-                  <p>No reviews yet. Be the first to leave a review!</p>
-                </div>
-              ) : (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4">
-                  {reviews.map((review, index) => (
+    <section className="py-16 bg-black min-h-screen">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-white mb-4">
+            What People Say
+          </h2>
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+            Don't just take our word for it. Here's what our clients and colleagues have to say about working with me.
+          </p>
+        </div>
+        
+        <div className="flex flex-col lg:flex-row gap-8 w-full">
+          {/* Reviews List */}
+          <div className="w-full lg:w-2/3">
+            <div className="bg-gray-900/50 rounded-2xl p-6 h-[600px] overflow-y-auto custom-scrollbar">
+              {approvedReviews.length > 0 ? (
+                <div className="space-y-6">
+                  {visibleReviewsList.map((review, index) => (
                     <motion.div
                       key={review.id}
-                      initial={{ opacity: 0, x: -50 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      viewport={{ once: true }}
-                      className="glass rounded-2xl p-6 hover:bg-white/10 transition-all"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="review-card p-6 text-white w-full"
                     >
-                      <div className="flex items-start gap-4">
-                        <div className="glass p-3 rounded-full">
-                          <User size={24} className="text-purple-400" />
+                      <div className="flex items-start">
+                        <div className="w-12 h-12 rounded-full bg-indigo-900/50 flex-shrink-0 flex items-center justify-center border-2 border-indigo-600/30 mr-4">
+                          <User className="w-6 h-6 text-indigo-300" />
                         </div>
                         <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div>
-                              <h4 className="font-semibold">{review.name}</h4>
+                              <h3 className="text-lg font-semibold text-white">{review.name}</h3>
                               {review.company && (
-                                <p className="text-sm text-white/60">{review.company}</p>
+                                <p className="text-sm text-indigo-300">{review.company}</p>
                               )}
                             </div>
-                            {renderStars(review.rating)}
+                            <div className="flex items-center text-yellow-400">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`w-5 h-5 ${i < review.rating ? 'fill-current' : 'text-gray-500'}`}
+                                />
+                              ))}
+                            </div>
                           </div>
-                          <p className="text-white/80 mb-2">{review.comment}</p>
-                          <p className="text-xs text-white/40">
-                            {new Date(review.date).toLocaleDateString()}
-                          </p>
+                          <p className="mt-3 text-gray-300 text-sm sm:text-base">{review.comment}</p>
+                          <div className="mt-3 text-right">
+                            <span className="text-xs text-gray-400">
+                              {formatDate(review.date)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
                   ))}
                 </div>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-800 border-2 border-dashed border-gray-700 flex items-center justify-center">
+                      <User className="w-8 h-8 text-gray-500" />
+                    </div>
+                    <p className="text-gray-400">No reviews yet. Be the first to leave a review!</p>
+                  </div>
+                </div>
+              )}
+              
+              {hasMoreReviews && (
+                <div className="text-center mt-6">
+                  <button
+                    onClick={() => setVisibleReviews(prev => prev + 3)}
+                    disabled={isLoadingMore}
+                    className="w-full text-white font-medium py-3 px-6 rounded-lg submit-btn"
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        Loading...
+                      </>
+                    ) : (
+                      'Load More Reviews'
+                    )}
+                  </button>
+                </div>
               )}
             </div>
-
-            {/* Review Submission Form */}
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-              viewport={{ once: true }}
-            >
-              <h3 className="text-2xl font-bold mb-6">Leave a Review</h3>
-              <form onSubmit={handleSubmit} className="glass rounded-3xl p-8">
-                <div className="mb-6">
-                  <label htmlFor="review-name" className="block text-sm font-medium mb-2">
-                    Your Name *
+          </div>
+          
+          {/* Review Form - Right Side */}
+          <div className="lg:w-1/2">
+            <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700 sticky top-6">
+              <h3 className="text-2xl font-bold text-white mb-2">Leave a Review</h3>
+              <p className="text-gray-400 mb-6">Share your experience working with me</p>
+              
+              {responseMessage && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`mb-6 p-4 rounded-md ${
+                    status === 'error' 
+                      ? 'bg-red-900/20 text-red-300' 
+                      : 'bg-green-900/20 text-green-300'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    {status === 'error' ? (
+                      <XCircle className="w-5 h-5 mr-2 flex-shrink-0" />
+                    ) : (
+                      <CheckCircle className="w-5 h-5 mr-2 flex-shrink-0" />
+                    )}
+                    <span>{responseMessage}</span>
+                  </div>
+                </motion.div>
+              )}
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
+                    Your Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    id="review-name"
+                    id="name"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 input-field"
                     required
-                    className="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                    disabled={isSubmitting}
                     placeholder="John Doe"
                   />
                 </div>
-
-                <div className="mb-6">
-                  <label htmlFor="company" className="block text-sm font-medium mb-2">
+                
+                <div>
+                  <label htmlFor="company" className="block text-sm font-medium text-gray-300 mb-2">
                     Company (Optional)
                   </label>
                   <input
@@ -217,91 +310,86 @@ export default function ReviewsSection() {
                     name="company"
                     value={formData.company}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-                    placeholder="Your Company"
+                    className="w-full px-4 py-2 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 input-field"
+                    disabled={isSubmitting}
+                    placeholder="Company Name"
                   />
                 </div>
-
-                <div className="mb-6">
-                  <label htmlFor="rating" className="block text-sm font-medium mb-2">
-                    Rating *
-                  </label>
-                  <div className="flex items-center gap-2" role="radiogroup" aria-label="Rating">
+                
+                <div>
+                  <span className="block text-sm font-medium text-gray-300 mb-2">
+                    Rating <span className="text-red-500">*</span>
+                  </span>
+                  <div className="flex items-center space-x-2 bg-gray-700/30 p-2 rounded-xl">
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <motion.button
+                      <button
                         key={star}
                         type="button"
-                        role="radio"
-                        aria-checked={star === formData.rating}
-                        aria-label={`${star} star${star === 1 ? '' : 's'}`}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setFormData({ ...formData, rating: star })}
-                        className="focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2 rounded-full p-1"
+                        onClick={() => handleRatingChange(star)}
+                        className={`p-2 rounded-lg transition-all ${star <= formData.rating ? 'bg-indigo-600/30' : 'hover:bg-gray-600/50'}`}
+                        disabled={isSubmitting}
+                        aria-label={`Rate ${star} star${star !== 1 ? 's' : ''}`}
                       >
                         <Star
-                          size={28}
-                          className={`transition-colors ${star <= formData.rating 
-                            ? 'fill-yellow-400 text-yellow-400' 
-                            : 'text-gray-400 hover:text-yellow-300'}`}
+                          className={`w-6 h-6 ${star <= formData.rating ? 'text-purple-400' : 'text-gray-500'}`}
                         />
-                      </motion.button>
+                      </button>
                     ))}
+                    <span className="ml-2 text-sm font-medium text-gray-300">
+                      {formData.rating} {formData.rating === 1 ? 'star' : 'stars'}
+                    </span>
                   </div>
                 </div>
-
-                <div className="mb-6">
-                  <label htmlFor="review-comment" className="block text-sm font-medium mb-2">
-                    Your Review *
+                
+                <div>
+                  <label htmlFor="comment" className="block text-sm font-medium text-gray-300 mb-2">
+                    Your Review <span className="text-red-500">*</span>
                   </label>
                   <textarea
-                    id="review-comment"
+                    id="comment"
                     name="comment"
+                    rows={4}
                     value={formData.comment}
                     onChange={handleChange}
+                    className="w-full px-4 py-2 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 input-field"
                     required
-                    rows={5}
-                    className="w-full px-4 py-3 rounded-xl glass focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all resize-none"
-                    placeholder="Share your experience with Devera..."
-                  />
+                    disabled={isSubmitting}
+                    placeholder="Share your experience working with me..."
+                  ></textarea>
                 </div>
-
-                {responseMessage && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
-                      status === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                    }`}
+                
+                <div className="pt-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full flex justify-center items-center px-6 py-4 rounded-xl text-base font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-indigo-900/20"
                   >
-                    {status === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
-                    <span>{responseMessage}</span>
-                  </motion.div>
-                )}
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={status === 'loading'}
-                  className="w-full gradient-border px-8 py-4 rounded-full text-lg font-semibold flex items-center justify-center gap-2 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {status === 'loading' ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      Submit Review <Send size={20} />
-                    </>
-                  )}
-                </motion.button>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="animate-spin mr-2 h-5 w-5" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-5 h-5 mr-2" />
+                        Submit Review
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+                
+                <p className="text-xs text-center text-gray-400 mt-6">
+                  Your review will be reviewed before being published to ensure a positive community experience.
+                </p>
               </form>
-            </motion.div>
+            </div>
           </div>
+          
+          {/* Review Form - Moved to sidebar */}
+        </div>
       </div>
     </section>
-    </>
-  )
+  );
 }

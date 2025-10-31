@@ -1,40 +1,119 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, readFile, mkdir } from 'fs/promises'
-import path from 'path'
 import { sendEmail } from '@/lib/email'
+import { db } from '@/lib/firebase'
+import { Timestamp, FieldValue } from 'firebase-admin/firestore'
 
-const REVIEWS_FILE = path.join(process.cwd(), 'data', 'reviews.json')
-
-// Ensure data directory exists
-async function ensureDataDir() {
-  try {
-    await mkdir(path.join(process.cwd(), 'data'), { recursive: true })
-  } catch (error) {
-    // Directory already exists
-  }
-}
-
-// Read reviews from file
+// Get all reviews from Firestore
 async function getReviews() {
   try {
-    const data = await readFile(REVIEWS_FILE, 'utf-8')
-    return JSON.parse(data)
+    if (!db) {
+      console.error('Firestore not initialized');
+      return [];
+    }
+    
+    console.log('Fetching all reviews...');
+    const snapshot = await db
+      .collection('reviews')
+      .orderBy('date', 'desc')
+      .get();
+    
+    console.log(`Found ${snapshot.docs.length} reviews in Firestore`);
+    
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log('Review data:', { id: doc.id, ...data });
+      
+      // Handle date - use current date if invalid
+      let dateValue: string;
+      try {
+        if (data.date?.toDate) {
+          dateValue = data.date.toDate().toISOString();
+        } else if (data.date) {
+          const date = new Date(data.date);
+          dateValue = isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+        } else {
+          dateValue = new Date().toISOString();
+        }
+      } catch (e) {
+        console.warn('Error processing date, using current date');
+        dateValue = new Date().toISOString();
+      }
+      
+      return {
+        id: doc.id,
+        name: data.name || 'Anonymous',
+        rating: Number(data.rating) || 5,
+        comment: data.comment || '',
+        company: data.company || '',
+        date: dateValue,
+        // Include all other fields
+        ...Object.fromEntries(
+          Object.entries(data)
+            .filter(([key]) => !['name', 'rating', 'comment', 'company', 'date'].includes(key))
+        )
+      };
+    });
   } catch (error) {
-    // File doesn't exist yet, return empty array
-    return []
+    console.error('Error getting reviews:', error);
+    return [];
   }
 }
 
-// Write reviews to file
-async function saveReviews(reviews: any[]) {
-  await ensureDataDir()
-  await writeFile(REVIEWS_FILE, JSON.stringify(reviews, null, 2))
+// Add a new review to Firestore
+async function saveReview(review: any) {
+  if (!db) {
+    throw new Error('Firestore not initialized');
+  }
+  
+  try {
+    console.log('Saving new review:', review);
+    
+    // Ensure we have all required fields with defaults
+    const reviewData = {
+      name: (review.name || '').trim() || 'Anonymous',
+      rating: Math.min(5, Math.max(1, Number(review.rating) || 5)), // Ensure rating is between 1-5
+      comment: (review.comment || '').trim(),
+      company: (review.company || '').trim(),
+      // Always store as Firestore Timestamp for consistency
+      date: Timestamp.now(),
+      // Set to false for admin approval
+      approved: false,
+      // Track when the review was created
+      createdAt: FieldValue.serverTimestamp()
+    };
+    
+    // Log the processed data for debugging
+    console.log('Processed review data for saving:', {
+      ...reviewData,
+      date: reviewData.date.toDate().toISOString(),
+      // Don't log serverTimestamp
+    });
+    
+    console.log('Processed review data for saving:', reviewData);
+    const docRef = await db.collection('reviews').add(reviewData);
+    
+    return { 
+      id: docRef.id, 
+      ...reviewData,
+      // Convert Firestore Timestamp to ISO string for response
+      date: reviewData.date.toDate().toISOString(),
+      // Remove server-side only fields
+      approved: undefined,
+      createdAt: undefined
+    };
+  } catch (error) {
+    console.error('Error adding review:', error);
+    throw new Error('Failed to save review');
+  }
 }
 
 // GET - Fetch all reviews
 export async function GET() {
+  console.log('GET /api/reviews called');
   try {
-    const reviews = await getReviews()
+    console.log('Fetching reviews from Firestore...');
+    const reviews = await getReviews();
+    console.log(`Found ${reviews.length} approved reviews`);
     return NextResponse.json({ reviews }, { status: 200 })
   } catch (error) {
     console.error('Error fetching reviews:', error)
@@ -50,13 +129,16 @@ export async function POST(request: NextRequest) {
   // Set CORS headers
   const headers = new Headers()
   headers.set('Access-Control-Allow-Origin', '*')
-  headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS, GET')
   headers.set('Access-Control-Allow-Headers', 'Content-Type')
 
   // Handle OPTIONS request for CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers })
   }
+
+  // Log request for debugging
+  console.log('Received request at:', new Date().toISOString());
 
   try {
     const body = await request.json()
@@ -90,8 +172,7 @@ export async function POST(request: NextRequest) {
       approved: true
     }
 
-    const updatedReviews = [newReview, ...reviews]
-    await saveReviews(updatedReviews)
+    const savedReview = await saveReview(newReview)
 
     try {
       // Send email notification for new review
@@ -141,7 +222,7 @@ export async function POST(request: NextRequest) {
       JSON.stringify({ 
         success: true, 
         message: 'Review submitted successfully!', 
-        review: newReview 
+        review: savedReview 
       }),
       { 
         status: 201, 
