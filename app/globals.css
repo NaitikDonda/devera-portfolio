@@ -1,0 +1,392 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 4%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 80%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 83%;
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 64%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 83%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@layer base {
+  body {
+    background-image: 
+      /* Dotted pattern */
+      radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+      /* Vertical lines */
+      linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+      /* Horizontal lines */
+      linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px, 60px 60px, 60px 60px;
+    background-position: 0 0, -1px -1px, -1px -1px;
+    overflow-x: hidden;
+    cursor: none;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+
+  .dark body {
+    background-color: #0a0a0a;
+    background-image: 
+      /* Dotted pattern */
+      radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px),
+      /* Vertical lines */
+      linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+      /* Horizontal lines */
+      linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  }
+}
+
+/* Optional: Add a subtle overlay to soften the grid */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 0%, rgba(10,10,10,0.6) 100%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dark body::after {
+  background: radial-gradient(ellipse at center, transparent 0%, rgba(10,10,10,0.8) 100%);
+}
+
+/* Custom Cursor */
+.cursor {
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  box-shadow: 
+    0 0 10px 4px rgba(210, 190, 255, 0.3),
+    0 0 70px 50px rgba(200, 160, 255, 0.15),
+    0 0 150px 100px rgba(180, 120, 255, 0.08);
+  transition: all 0.3s ease-out;
+  backdrop-filter: blur(2px);
+  opacity: 0.9;
+}
+
+.cursor::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 240, 255, 0.5) 0%,
+    rgba(230, 200, 255, 0.3) 40%,
+    rgba(210, 170, 255, 0.1) 70%,
+    rgba(190, 140, 255, 0) 100%
+  );
+  border-radius: 50%;
+  animation: pulse 4s infinite ease-in-out;
+  filter: blur(10px);
+  transform: scale(5);
+  opacity: 0.7;
+  will-change: transform, opacity;
+}
+
+/* Glow that covers half the screen */
+.cursor::after {
+  content: '';
+  position: absolute;
+  width: 50vw;
+  height: 50vh;
+  left: -25vw;
+  top: -25vh;
+  background: radial-gradient(
+    circle at center,
+    rgba(220, 200, 255, 0.08) 0%,
+    rgba(200, 170, 255, 0.05) 30%,
+    rgba(180, 140, 255, 0.02) 60%,
+    rgba(160, 120, 255, 0) 100%
+  );
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.5;
+  transition: opacity 0.5s ease;
+}
+
+/* Subtle hover effect */
+.cursor:hover {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 
+    0 0 15px 6px rgba(230, 210, 255, 0.25),
+    0 0 80px 60px rgba(210, 170, 255, 0.12),
+    0 0 180px 140px rgba(190, 140, 255, 0.05);
+}
+
+.cursor:hover::after {
+  opacity: 1;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(5);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(6);
+    opacity: 0.5;
+  }
+}
+
+/* Hide cursor on touch devices */
+@media (hover: none) {
+  .cursor {
+    display: none;
+  }
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-border {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/* Resume Page Styles */
+.glass-button {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.gradient-button {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.gradient-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: 0.5s;
+}
+
+.gradient-button:hover::before {
+  left: 100%;
+}
+
+/* Glass card effect */
+.glass {
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.glass:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Skill bars */
+.skill-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.skill-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 2px;
+  transition: width 1s ease-in-out;
+}
+
+/* Animation for elements */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+/* Responsive typography */
+@media (max-width: 640px) {
+  .resume-section {
+    padding: 1.5rem;
+  }
+  
+  .resume-header h1 {
+    font-size: 2rem;
+  }
+  
+  .resume-header p {
+    font-size: 1rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background: white;
+    color: black;
+    font-size: 12pt;
+  }
+  
+  .glass, .glass-button, .gradient-button {
+    background: white !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+  }
+  
+  .gradient-button {
+    background: #f3f4f6 !important;
+    color: black !important;
+  }
+  
+  a {
+    color: #3b82f6 !important;
+    text-decoration: none !important;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
